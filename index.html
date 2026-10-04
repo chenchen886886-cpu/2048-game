@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2048</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#faf8ef;color:#776e65;font-family:Arial,"Microsoft JhengHei",sans-serif;display:flex;justify-content:center;padding:30px 12px}.game{width:min(92vw,500px)}header{display:flex;justify-content:space-between;align-items:center}h1{font-size:64px;margin:0;font-weight:900}.scores{display:flex;gap:6px}.score{background:#bbada0;color:white;padding:6px 12px;border-radius:6px;text-align:center;font-weight:bold}.score small{display:block;font-size:10px}.score b{font-size:22px}.info{display:flex;justify-content:space-between;align-items:center;margin:12px 0}.new{border:0;background:#8f7a66;color:white;padding:10px 14px;border-radius:6px;font-weight:bold;cursor:pointer}.board{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:#bbada0;padding:10px;border-radius:8px;touch-action:none}.cell{aspect-ratio:1;background:#cdc1b4;border-radius:6px}.tile{position:absolute;display:flex;align-items:center;justify-content:center;font-size:clamp(26px,8vw,48px);font-weight:bold;border-radius:6px;transition:.1s}.t2{background:#eee4da}.t4{background:#ede0c8}.t8{background:#f2b179;color:white}.t16{background:#f59563;color:white}.t32{background:#f67c5f;color:white}.t64{background:#f65e3b;color:white}.t128,.t256,.t512,.t1024,.t2048{background:#edc53f;color:white;font-size:clamp(20px,6vw,38px)}.t2048{background:#edc22e}.msg{position:absolute;inset:0;background:#eee4daee;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px}.msg h2{font-size:42px;margin:0 0 10px}.msg button{border:0;background:#8f7a66;color:white;padding:10px 16px;border-radius:6px;font-weight:bold}.help{font-size:13px;line-height:1.6;margin-top:14px} @media(max-width:400px){h1{font-size:52px}.board{gap:7px;padding:7px}.score{padding:5px 8px}}
+</style>
+</head>
+<body>
+<div class="game">
+<header><h1>2048</h1><div class="scores"><div class="score"><small>分數</small><b id="score">0</b></div><div class="score"><small>最高</small><b id="best">0</b></div></div></header>
+<div class="info"><span>相同數字合併，挑戰 2048！</span><button class="new" onclick="init()">重新開始</button></div>
+<div id="board" class="board"></div>
+<div class="help">電腦按 ← ↑ → ↓ 或 WASD；手機直接滑動。</div>
+</div>
+<script>
+const N=4,B=document.getElementById("board"),S=document.getElementById("score"),BEST=document.getElementById("best");
+let a,score,best=+localStorage.best2048||0,over=false,won=false;
+function init(){a=Array.from({length:N},()=>Array(N).fill(0));score=0;over=won=false;add();add();draw();hide()}
+function add(){let e=[];a.forEach((r,i)=>r.forEach((v,j)=>{if(!v)e.push([i,j])}));if(e.length){let [i,j]=e[Math.random()*e.length|0];a[i][j]=Math.random()<.9?2:4}}
+function draw(){B.innerHTML="";for(let i=0;i<16;i++){let c=document.createElement("div");c.className="cell";B.appendChild(c)}a.forEach((r,i)=>r.forEach((v,j)=>{if(v){let t=document.createElement("div");t.className="tile t"+v;t.textContent=v;t.style.width="calc((100% - 30px)/4)";t.style.height="calc((100% - 30px)/4)";t.style.left=`calc(10px + ${j}*(25% - 7.5px))`;t.style.top=`calc(10px + ${i}*(25% - 7.5px))`;B.appendChild(t)}}));S.textContent=score;if(score>best){best=score;localStorage.best2048=best}BEST.textContent=best}
+function slide(row){let x=row.filter(Boolean),changed=false;for(let i=0;i<x.length-1;i++)if(x[i]==x[i+1]){x[i]*=2;score+=x[i];x.splice(i+1,1)}while(x.length<4)x.push(0);changed=row.some((v,i)=>v!=x[i]);return [x,changed]}
+function rot(){a=a[0].map((_,i)=>a.map(r=>r[i]).reverse())}
+function move(d){if(over||(won&&!d))return;let n={left:0,up:3,right:2,down:1}[d];for(let i=0;i<n;i++)rot();let moved=false;for(let i=0;i<4;i++){let [r,c]=slide(a[i]);a[i]=r;moved|=c}for(let i=0;i<(4-n)%4;i++)rot();if(!moved)return;add();draw();if(!won&&a.flat().includes(2048)){won=true;msg("恭喜！","你達成 2048！","繼續",()=>hide())}else if(!can()){over=true;msg("Game Over","再試一次","重新開始",init)}}
+function can(){if(a.flat().includes(0))return true;for(let i=0;i<4;i++)for(let j=0;j<4;j++)if((j<3&&a[i][j]==a[i][j+1])||(i<3&&a[i][j]==a[i+1][j]))return true;return false}
+function msg(h,p,b,fn){hide();let m=document.createElement("div");m.id="msg";m.className="msg";m.innerHTML=`<h2>${h}</h2><p>${p}</p><button>${b}</button>`;m.querySelector("button").onclick=fn;B.appendChild(m)}
+function hide(){document.getElementById("msg")?.remove()}
+document.onkeydown=e=>{let k=e.key.toLowerCase(),d={arrowleft:"left",a:"left",arrowup:"up",w:"up",arrowright:"right",d:"right",arrowdown:"down",s:"down"}[k];if(d){e.preventDefault();move(d)}};
+let sx=0,sy=0;B.ontouchstart=e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY};B.ontouchend=e=>{let x=e.changedTouches[0].clientX-sx,y=e.changedTouches[0].clientY-sy;if(Math.max(Math.abs(x),Math.abs(y))<30)return;move(Math.abs(x)>Math.abs(y)?x>0?"right":"left":y>0?"down":"up")};
+init();
+</script>
+</body>
+</html>
